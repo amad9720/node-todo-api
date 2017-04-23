@@ -1,46 +1,32 @@
-const mongoose = require('mongoose');
+// NOTE: This file will just be responsible for our ROOT
+var express = require('express');
+var bodyParser = require('body-parser');
 
-//Even if we don't have the connection established yet, mongoose will wait it before doing the Queries.
-mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost:27017/TodoApp');
+var {mongoose} = require('./db/mongoose.js');
+var {Todo} = require('./models/todos.js');
+var {User} = require('./models/user.js');
 
-// Unlike mongodb,mongoose create a model of data for storing the datas
-// NOTE: It's looks like SQL model when you create a table with different columns
-// NOTE: var Todo = mongoose.model('modelName', {modelStructure as an Object});
-// NOTE: After creating the model, we have to instanciate it
+var app = express();
 
-var Todo = mongoose.model('Todo', {
-  text :{
-    type : String
-  },
-  completed : {
-    type : Boolean
-  },
-  completedAt : {
-    type : Number
-  }
+//giving a middleware json() form 'body-parser' to express.
+app.use(bodyParser.json());
+
+//In the todo App, the user will create then send the data via the POST request.
+app.post('/todos', (req,res) => {
+  var todo = new Todo(req.body);
+
+  todo.save().then((doc) => {
+    res.send(doc);
+    console.log(JSON.stringify(doc,undefined,3));
+  }, (err) => {
+    res.status(400).send(err);
+  });
+
 });
 
-//Creating an instance of the model... a document... a row (in sql)
-var newTodo = new Todo({
-  text : 'Cook dinner'
-});
 
-//Saving the record inside the collection (the model). the save call will do the job, it will return a DB.
-newTodo.save().then((doc) => {
-  console.log('Saved todo : ', doc);
-}, (err) => {
-  console.log('Unable to save todo : ', err)
-});
 
-var newTodo2 = new Todo({
-  text : 'Finish Node Tutos',
-  completed : false,
-  completedAt : 000000
-});
 
-newTodo2.save().then((doc) => {
-  console.log('Saved todo : ', JSON.stringify(doc, undefined, 3));
-}, (err) => {
-  console.log('Unable to save todo : ', err);
+app.listen(3000, () => {
+  console.log('Started on port 3000');
 });
