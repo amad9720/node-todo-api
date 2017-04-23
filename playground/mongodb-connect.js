@@ -47,7 +47,7 @@ MongoClient.connect('mongodb://localhost:27017/Todo', (err, db) => {
 
   //create a collection (the collection will be created in the fly just as the database was... there is no need for a command to do it like in SQL)
   db.collection('Todos').insertOne({
-    text : 'Somethimg to do',
+    text : 'Work for Soficom to do',
     completed : false
   }, (err,result) => { //err for the feedback in case of the query fail and result in case of success
     if (err) {
@@ -60,9 +60,10 @@ MongoClient.connect('mongodb://localhost:27017/Todo', (err, db) => {
   });
 
   db.collection('Users').insertOne({
-    name : 'Amadou',
-    email : 'amly212782@gmail.com',
-    location : 'Bussy Saint Georges'
+    name : 'Ismael',
+    age : 21,
+    email : 'isma212782@gmail.com',
+    location : 'Bourg en province  '
   }, (err, result) => {
     if (err) return console.log('Unable to create the document inside Users : ', err);
     console.log(JSON.stringify(result.ops, undefined, 3));
