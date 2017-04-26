@@ -3,10 +3,20 @@ const request = require('supertest');
 const {app} = require('./../server');
 const {Todo} = require('./../models/todos');
 
+const todos = [
+  {
+    text : "First test todo"
+  }, {
+    text : "Second test todo"
+  }
+];
+
 // NOTE:  beforeEach : run code before any single test code (meanning before any it(...))
 beforeEach(function (done) {
   // empty the Todos Collection in the db
-  Todo.remove({}).then(() => done());
+  Todo.remove({}).then(() => {
+    return Todo.insertMany(todos);
+  }).then(() => done());
 });
 
 describe('POST /Todo',  () => {
@@ -24,7 +34,7 @@ describe('POST /Todo',  () => {
       .end((err, res) => {
         if(err) return done(err);
 
-        Todo.find().then((todos) => { //the todos parameter here is what was returned by the promise (find)
+        Todo.find({text}).then((todos) => { //the todos parameter here is what was returned by the promise (find)
           expect(todos.length).toBe(1);
           expect(todos[0].text).toBe(text);
           done();
@@ -44,10 +54,21 @@ describe('POST /Todo',  () => {
         if(err) return done(err);
 
         Todo.find().then((todos) => {
-          expect(todos.length).toBe(0);
-          expect(todos[0]).toBe(); //the array is empty ... when the toBe function is without parameter it's mean undefined
+          expect(todos.length).toBe(2);
+          // expect(todos[0]).toBe(); //the array is empty ... when the toBe function is without parameter it's mean undefined
           done();
         }).catch((e) => done(e));
       })
+  });
+});
+
+describe('GET /Todo',  () => {
+  it('should Get all todos', function (done) {
+    request(app)
+    .get('/todos')
+    .expect(200)
+    .expect((res) => {
+      expect(res.body.todos.length).toBe(2);
+    }).end(done); // no need to pass a function here as in the post test because we are doing anything async here
   });
 });
