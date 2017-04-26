@@ -35,7 +35,7 @@ describe('POST /Todo',  () => {
   it('should not create todo with invalide data', function (done) {
     request(app)
       .post('/todos')
-      .send({})
+      .send({}) //bad data given... Because we configured the models of the Todo Collection with required text attribute.
       .expect(400) //codeStatus 400 : bad request
       .expect((res) => {
 
@@ -45,7 +45,7 @@ describe('POST /Todo',  () => {
 
         Todo.find().then((todos) => {
           expect(todos.length).toBe(0);
-          expect(todos[0]).toBe();
+          expect(todos[0]).toBe(); //the array is empty ... when the toBe function is without parameter it's mean undefined
           done();
         }).catch((e) => done(e));
       })

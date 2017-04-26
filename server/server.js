@@ -24,7 +24,15 @@ app.post('/todos', (req,res) => {
 
 });
 
-
+app.get('/todos', (req, res) => {
+  Todo.find().then((todos) => {
+    res.send({ //we had to pass just the todos array but passing it to an object and passing this object to send is more flexible because we can add extra properties on it
+      todos //ES6 syntax : same as "todos : todos"
+    })
+  }, (e) => {
+    res.status(400).send(e);
+  });
+})
 
 
 app.listen(3000, () => {
@@ -33,4 +41,4 @@ app.listen(3000, () => {
 
 module.exports = {
   app
-}
+};
