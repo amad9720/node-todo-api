@@ -1,10 +1,10 @@
 // NOTE: This file will just be responsible for our ROOT
-var express = require('express');
-var bodyParser = require('body-parser');
-
-var {mongoose} = require('./db/mongoose.js');
-var {Todo} = require('./models/todos.js');
-var {User} = require('./models/user.js');
+const express = require('express');
+const bodyParser = require('body-parser');
+const {mongoose} = require('./db/mongoose.js');
+const {ObjectID} = require('mongodb');
+const {Todo} = require('./models/todos.js');
+const {User} = require('./models/user.js');
 
 var app = express();
 
@@ -32,7 +32,34 @@ app.get('/todos', (req, res) => {
   }, (e) => {
     res.status(400).send(e);
   });
-})
+});
+
+//What is fantastique with requests in Express is that you can pass variables to you URL . the pattern to do so is : inside of the string URL (first parameter for the app.get method), you pass the "/root/:variable" this will create a variable named variable inside the request (req) object so we can access it
+app.get('/todos/:id', (req,res) => {
+  //req.params is an object that have as it's key/vules paires the variables send in the URL and their values. {id : id_value};
+  var id = req.params.id;
+
+  if (!ObjectID.isValid(id)) {
+    console.log("Id not Valid");
+    res.status(404).send();
+  }
+
+  Todo.findById(id).then((todo) => {
+    if (!todo)
+      res.status(404).send("error todo undefined");
+
+    res.send({todo});
+
+  }).catch((e) => { //
+    res.status(400).send("error with the then");
+  });
+//the catch above is used because of this error :
+// UnhandledPromiseRejectionWarning: Unhandled promise rejection (rejection id: 1): Error: Can't set headers after they are sent.
+// (node:65376) DeprecationWarning: Unhandled promise rejections are deprecated. In the future, promise rejections that are not handled will terminate the Node.js process with a non-zero exit code.
+
+
+});
+
 
 
 app.listen(3000, () => {
