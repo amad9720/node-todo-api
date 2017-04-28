@@ -7,6 +7,7 @@ const {Todo} = require('./models/todos.js');
 const {User} = require('./models/user.js');
 
 var app = express();
+const port = process.env.PORT || 3000;
 
 //giving a middleware json() form 'body-parser' to express.
 app.use(bodyParser.json());
@@ -48,7 +49,7 @@ app.get('/todos/:id', (req,res) => {
     if (!todo)
       res.status(404).send("error todo undefined");
 
-    res.send({todo});
+    res.send({todo}); //better to wrap the result in an object so you can add things to it andbe more flexible
 
   }).catch((e) => { //
     res.status(400).send("error with the then");
@@ -62,8 +63,8 @@ app.get('/todos/:id', (req,res) => {
 
 
 
-app.listen(3000, () => {
-  console.log('Started on port 3000');
+app.listen(port, () => {
+  console.log(`Started on port ${port}`);
 });
 
 module.exports = {
