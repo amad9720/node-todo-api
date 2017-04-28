@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "Start": "node server/server.js",
+    "start": "node server/server.js",
     "test": "mocha server/**/*.test.js",
     "test-watch": "nodemon --exec \"npm test\""
   },
@@ -12,7 +12,7 @@
     "node": "7.7.4"
   },
   "author": "",
-  "license": "ISC", 
+  "license": "ISC",
   "dependencies": {
     "body-parser": "^1.17.1",
     "expect": "^1.20.2",
