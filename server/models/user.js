@@ -4,7 +4,6 @@ const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 
 
-
 var userSchema = new mongoose.Schema({
   email : {
     type : String,
@@ -37,7 +36,7 @@ var userSchema = new mongoose.Schema({
 
 });
 
-
+//there we define the instance functions... to be called with an instance of a model (STORED in the {methods} object)
 userSchema.methods.toJSON = function () { //this is a predefined function of mongoose that we are overwriting... it is the function mongoose use to return the data to the client.
   var user = this;
   var userObject = user.toObject();
@@ -55,6 +54,27 @@ userSchema.methods.generateAuthToken = function() { //here we don't use arrow fu
     return token;
   }); // (**) :here we want to return a promise in wich we want to chain another then when called in server.js but instead of returning a promise we can just return the value wich would be passend to the then and it will still work
 }; //on the methods object we can add all the methods we want to manage the Schema.
+
+//there we define the model functions... to be called with the model itself (STORED in the {statics} object)
+userSchema.statics.findByToken = function (token) {
+  var User = this;
+  var decoded;
+
+  try {
+    decoded = jwt.verify(token, '123abc'); //return the decoded object
+  } catch (e) {
+    // return new new Promise((resolve, reject) => {
+    //   reject();
+    // }); same as the code below but longer
+    return Promise.reject();
+  }
+
+  return User.findOne({  // here we are using {'...'}  because of the nested properties we want to access, 'tokens.access' and 'tokens.token' (see the user schema) ..
+    '_id' : decoded._id,
+    'tokens.access': 'auth',
+    'tokens.token': token
+  });
+};
 
 var User = mongoose.model('User', userSchema);
 
