@@ -106,7 +106,26 @@ app.patch('/todos/:id', (req,res) => {
   }).catch((e) => {
     res.status(400).send();
   });
+});
 
+app.post('/user', (req,res) => {
+  var body = _.pick(req.body, ['email', 'password']);
+  var user = new User(body);
+
+  user.save().then((user) => {
+    return user.generateAuthToken(); //this function return a promise and the value token as argument (see the user.js file).
+  }).then((token) => {
+    res.header('x-auth', token).send(user);
+  }).catch((err) => {
+    console.log("-------Problem--------");
+    if (err.code === 11000)
+      console.log(`Please use another email this one is already used`);
+
+    if (err.errors.email.properties.message == "{VALUE} is not a valid email")
+      console.log(`${err.errors.email.properties.value} is not a valid email, please provide a valide email as example@domaine.com`);
+      
+    res.status(400).send(err);
+  });
 });
 
 app.listen(port, () => {
