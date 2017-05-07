@@ -1,79 +1,54 @@
-// NOTE: This file will just be responsible for our ROOT
 require('./config/config');
-const express = require('express');
+
 const _ = require('lodash');
+const express = require('express');
 const bodyParser = require('body-parser');
-const {mongoose} = require('./db/mongoose.js');
 const {ObjectID} = require('mongodb');
-const {Todo} = require('./models/todos.js');
-const {User} = require('./models/user.js');
-const {authenticate} = require('./middleware/authenticate');
+
+var {mongoose} = require('./db/mongoose');
+var {Todo} = require('./models/todo');
+var {User} = require('./models/user');
+var {authenticate} = require('./middleware/authenticate');
 
 var app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
 
-//the mongoose middleware allows you to run some code before or after an event (saving, updating, deleting...) se the documentation
-
-//giving a middleware json() form 'body-parser' to express.
 app.use(bodyParser.json());
 
-//In the todo App, the user will create then send the data via the POST request.
-app.post('/todos', (req,res) => {
-  var todo = new Todo(req.body);
+app.post('/todos', authenticate, (req, res) => {
+  var todo = new Todo({
+    text: req.body.text,
+    _creator: req.user._id
+  });
 
   todo.save().then((doc) => {
     res.send(doc);
-    //console.log(JSON.stringify(doc,undefined,3));
-  }, (err) => {
-    res.status(400).send(err);
-  });
-
-});
-
-app.get('/todos', (req, res) => {
-  Todo.find().then((todos) => {
-    res.send({ //we had to pass just the todos array but passing it to an object and passing this object to send is more flexible because we can add extra properties on it
-      todos //ES6 syntax : same as "todos : todos"
-    })
   }, (e) => {
     res.status(400).send(e);
   });
 });
 
-//What is fantastique with requests in Express is that you can pass variables to you URL . the pattern to do so is : inside of the string URL (first parameter for the app.get method), you pass the "/root/:variable" this will create a variable named variable inside the request (req) object so we can access it
-app.get('/todos/:id', (req,res) => {
-  //req.params is an object that have as it's key/vules paires the variables send in the URL and their values. {id : id_value};
-  var id = req.params.id;
-
-  if (!ObjectID.isValid(id)) {
-    console.log("Id not Valid");
-    res.status(404).send();
-  }
-
-  Todo.findById(id).then((todo) => {
-    if (!todo)
-      res.status(404).send("error todo undefined");
-
-    res.send({todo}); //better to wrap the result in an object so you can add things to it andbe more flexible
-
-  }).catch((e) => { //
-    res.status(400).send("error with the then");
+app.get('/todos', authenticate, (req, res) => {
+  Todo.find({
+    _creator: req.user._id
+  }).then((todos) => {
+    res.send({todos});
+  }, (e) => {
+    res.status(400).send(e);
   });
-//the catch above is used because of this error :
-// UnhandledPromiseRejectionWarning: Unhandled promise rejection (rejection id: 1): Error: Can't set headers after they are sent.
-// (node:65376) DeprecationWarning: Unhandled promise rejections are deprecated. In the future, promise rejections that are not handled will terminate the Node.js process with a non-zero exit code.
-
-
 });
 
-app.delete('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
   var id = req.params.id;
 
   if (!ObjectID.isValid(id)) {
     return res.status(404).send();
   }
 
-  Todo.findByIdAndRemove(id).then((todo) => {
+  Todo.findOne({
+    _id: id,
+    _creator: req.user._id
+  }).then((todo) => {
     if (!todo) {
       return res.status(404).send();
     }
@@ -84,7 +59,28 @@ app.delete('/todos/:id', (req, res) => {
   });
 });
 
-app.patch('/todos/:id', (req,res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
+  var id = req.params.id;
+
+  if (!ObjectID.isValid(id)) {
+    return res.status(404).send();
+  }
+
+  Todo.findOneAndRemove({
+    _id: id,
+    _creator: req.user._id
+  }).then((todo) => {
+    if (!todo) {
+      return res.status(404).send();
+    }
+
+    res.send({todo});
+  }).catch((e) => {
+    res.status(400).send();
+  });
+});
+
+app.patch('/todos/:id', authenticate, (req, res) => {
   var id = req.params.id;
   var body = _.pick(req.body, ['text', 'completed']);
 
@@ -94,45 +90,43 @@ app.patch('/todos/:id', (req,res) => {
 
   if (_.isBoolean(body.completed) && body.completed) {
     body.completedAt = new Date().getTime();
-  }else{
+  } else {
     body.completed = false;
-    body.completedAt = nulll;
+    body.completedAt = null;
   }
 
-  Todo.findByIdAndUpdate(id, {$set : body}, {new : true}).then((todo) => {
+  Todo.findOneAndUpdate({_id: id, _creator: req.user._id}, {$set: body}, {new: true}).then((todo) => {
     if (!todo) {
       return res.status(404).send();
     }
 
     res.send({todo});
-
   }).catch((e) => {
     res.status(400).send();
-  });
+  })
 });
 
-app.post('/user', (req,res) => {
+// POST /users
+app.post('/users', (req, res) => {
   var body = _.pick(req.body, ['email', 'password']);
   var user = new User(body);
 
-  user.save().then((user) => {
-    return user.generateAuthToken(); //this function return a promise and the value token as argument (see the user.js file).
+  user.save().then(() => {
+    return user.generateAuthToken();
   }).then((token) => {
     res.header('x-auth', token).send(user);
-  }).catch((err) => {
-    console.log("-------Problem--------");
-    if (err.code === 11000)
-      console.log(`Please use another email this one is already used`);
-
-    if (err.errors.email.properties.message == "{VALUE} is not a valid email")
-      console.log(`${err.errors.email.properties.value} is not a valid email, please provide a valide email as example@domaine.com`);
-
-    res.status(400).send(err);
-  });
+  }).catch((e) => {
+    res.status(400).send(e);
+  })
 });
 
-app.post('/user/login', (req, res) => {
+app.get('/users/me', authenticate, (req, res) => {
+  res.send(req.user);
+});
+
+app.post('/users/login', (req, res) => {
   var body = _.pick(req.body, ['email', 'password']);
+
   User.findByCredentials(body.email, body.password).then((user) => {
     return user.generateAuthToken().then((token) => {
       res.header('x-auth', token).send(user);
@@ -150,41 +144,8 @@ app.delete('/users/me/token', authenticate, (req, res) => {
   });
 });
 
-//+++++++++++++++++ the authentificate function is a middleware used by the GET /user/me route ++++++++++++++++++
-//to unnderstand the link between these two see the video 5.Private Routes and Auth Middleware.mp4 at the 13th minute
-
-//@ this function is in the file authentificate.js
-
-// var authentificate = (req, res, next) => {
-//   var token = req.header('x-auth');
-//
-//   //the model method to find a user by the token we get
-//   User.findByToken(token).then((user) => {
-//     if (!user) {
-//       return Promise.reject(); //will be catch and handled with the catch block below just as we did it inside the try_catch inside user.js
-//     }
-//
-//     req.user = user;
-//     req.token = token;
-//     next();
-//
-//   }).catch((err) => {
-//     res.status(401).send("401 unhotorized authentification failed"); //authentification required
-//   });
-//
-// }
-
-
-app.get('/user/me', authenticate, (req, res) => {
-  res.send(req.user);
-});
-
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
 app.listen(port, () => {
-  console.log(`Started on port ${port}`);
+  console.log(`Started up at port ${port}`);
 });
 
-module.exports = {
-  app
-};
+module.exports = {app};
