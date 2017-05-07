@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
+const bcrypt = require('bcryptjs');
 
 
 var userSchema = new mongoose.Schema({
@@ -69,10 +70,57 @@ userSchema.statics.findByToken = function (token) {
     return Promise.reject();
   }
 
+  //using the mongoose middleware : we are checking is the password is modified to hash it again and updating the hash before saving it.
+  userSchema.pre('save', function() {
+    var user = this;
+
+    if (user.isModified('password')) {
+      bcrypt.genSalt(10, (err,salt) => {
+        bcrypt.hash(user.password, salt, (err, hash) => {
+          user.password = hash;
+          next();
+        });
+      });
+    } else {
+      next();
+    }
+
+  });
+
   return User.findOne({  // here we are using {'...'}  because of the nested properties we want to access, 'tokens.access' and 'tokens.token' (see the user schema) ..
     '_id' : decoded._id,
     'tokens.access': 'auth',
     'tokens.token': token
+  });
+};
+
+userSchema.statics.findByCredentials = function (email, password) {
+  var user = this;
+
+  user.findOne({email}).then((user) => {
+    if (!user) {
+      return Promise.reject();
+    }
+
+    return new Promise((resolve,reject) => {
+      bcrypt.compare(password, user.password, (err, res) => {
+        if (res) {
+            resolve(user);
+        }else {
+          reject();
+        }
+      });
+    });
+  });
+};
+
+UserSchema.methods.removeToken = function (token) {
+  var user = this;
+
+  return user.update({
+    $pull: {
+      tokens: {token}
+    }
   });
 };
 

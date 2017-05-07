@@ -12,6 +12,8 @@ const {authenticate} = require('./middleware/authenticate');
 var app = express();
 const port = process.env.PORT || 3000;
 
+//the mongoose middleware allows you to run some code before or after an event (saving, updating, deleting...) se the documentation
+
 //giving a middleware json() form 'body-parser' to express.
 app.use(bodyParser.json());
 
@@ -126,6 +128,25 @@ app.post('/user', (req,res) => {
       console.log(`${err.errors.email.properties.value} is not a valid email, please provide a valide email as example@domaine.com`);
 
     res.status(400).send(err);
+  });
+});
+
+app.post('/user/login', (req, res) => {
+  var body = _.pick(req.body, ['email', 'password']);
+  User.findByCredentials(body.email, body.password).then((user) => {
+    return user.generateAuthToken().then((token) => {
+      res.header('x-auth', token).send(user);
+    });
+  }).catch((e) => {
+    res.status(400).send();
+  });
+});
+
+app.delete('/users/me/token', authenticate, (req, res) => {
+  req.user.removeToken(req.token).then(() => {
+    res.status(200).send();
+  }, () => {
+    res.status(400).send();
   });
 });
 
